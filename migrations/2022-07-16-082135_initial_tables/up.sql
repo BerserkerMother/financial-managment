@@ -26,7 +26,6 @@ CREATE TABLE transaction(
 	id serial PRIMARY KEY,
 	bank_account integer,
 
-	UNIQUE (user_id, bank_account),
 	FOREIGN KEY (bank_account) REFERENCES account (id),
 	FOREIGN KEY (user_id) REFERENCES users (username)
 );
