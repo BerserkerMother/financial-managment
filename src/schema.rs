@@ -40,6 +40,6 @@ allow_tables_to_appear_in_same_query!(account, transaction, users,);
 
 pub mod sql_types {
     #[derive(diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "Currency_type"))]
+    #[diesel(postgres_type(name = "currency_type"))]
     pub struct CurrencyType;
 }
