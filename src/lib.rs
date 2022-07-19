@@ -4,11 +4,9 @@ mod schema;
 #[macro_use]
 extern crate diesel;
 
-use self::schema::{account, transaction, users};
 use diesel::prelude::*;
 use dotenv::dotenv;
 use std::env;
-use std::error::Error;
 
 fn establish_connection() -> PgConnection {
     dotenv().ok();
