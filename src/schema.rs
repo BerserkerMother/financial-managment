@@ -1,6 +1,6 @@
 table! {
     account (id) {
-        balance -> Nullable<Text>,
+        balance -> Text,
         user_id -> Text,
         id -> Int4,
         name -> Text,
@@ -8,9 +8,8 @@ table! {
 }
 
 table! {
-    use diesel::sql_types::*;
     use super::sql_types::CurrencyType;
-
+    use diesel::sql_types::*;
     transaction (id) {
         kind -> Bool,
         source -> Nullable<Text>,

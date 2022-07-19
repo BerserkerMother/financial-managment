@@ -7,11 +7,12 @@ CREATE TABLE users(
 );
 
 CREATE TABLE account(
-	balance text DEFAULT '0',
+	balance text NOT NULL DEFAULT '0',
 	user_id text NOT NULL,
 	id serial PRIMARY KEY,
 	name text NOT NULL, 
-
+	
+	UNIQUE (user_id, name),
 	FOREIGN KEY (user_id) REFERENCES users (username)
 );
 
@@ -20,7 +21,7 @@ CREATE TABLE transaction(
 	source text,
 	note text,
 	value text NOT NULL,
-	currency currency_type,
+	currency currency_type DEFAULT 'USD',
 	time date NOT NULL,
 	user_id text NOT NULL,
 	id serial PRIMARY KEY,

@@ -3,7 +3,7 @@ use super::*;
 
 #[derive(Queryable, Debug, PartialEq)]
 pub struct Account {
-    pub balance: Option<String>,
+    pub balance: String,
     pub user_id: String,
     pub id: i32,
     pub name: String,
@@ -11,12 +11,9 @@ pub struct Account {
 
 impl Account {
     /// Constructor for Account
-    fn new(balance: Option<&str>, user_id: &str, id: i32, name: &str) -> Account {
+    fn new(balance: &str, user_id: &str, id: i32, name: &str) -> Account {
         Account {
-            balance: match balance {
-                Some(bal) => Some(String::from(bal)),
-                None => None,
-            },
+            balance: String::from(balance),
             user_id: String::from(user_id),
             id: id,
             name: String::from(name),
@@ -113,7 +110,7 @@ impl Account {
 #[derive(Debug, Insertable)]
 #[diesel(table_name = account)]
 pub struct NewAccount<'a> {
-    pub balance: Option<&'a str>,
+    pub balance: &'a str,
     pub user_id: &'a str,
     pub name: &'a str,
 }
@@ -121,7 +118,7 @@ pub struct NewAccount<'a> {
 impl<'a> NewAccount<'a> {
     fn new(user_id: &'a str, name: &'a str) -> NewAccount<'a> {
         NewAccount {
-            balance: Some("0"),
+            balance: "0",
             user_id,
             name,
         }
@@ -131,7 +128,7 @@ impl<'a> NewAccount<'a> {
 impl<'a> Default for NewAccount<'a> {
     fn default() -> NewAccount<'a> {
         NewAccount {
-            balance: Some("0"),
+            balance: "0",
             user_id: "BerserkerMother",
             name: "American Express",
         }
@@ -140,6 +137,7 @@ impl<'a> Default for NewAccount<'a> {
 
 #[cfg(test)]
 mod test {
+    // make sure a test user with username "BerserkerMother" exist in database
     use super::super::establish_connection;
     use super::*;
 
