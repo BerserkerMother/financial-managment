@@ -12,3 +12,7 @@ use diesel::prelude::*;
 use diesel::result::Error;
 use diesel::serialize::{self, IsNull, Output, ToSql};
 use std::io::Write;
+
+pub use account::Account;
+pub use transaction::Transaction;
+pub use user::User;

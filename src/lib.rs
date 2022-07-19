@@ -17,4 +17,10 @@ fn establish_connection() -> PgConnection {
 
 pub fn functionality_test() {
     // let mut conn = establish_connection();
+
+    // use self::models::User;
+    // User::add(
+    //     &mut conn,
+    //     &User::new_user("BerserkerMother", "123wwe", "Kave"),
+    // );
 }
