@@ -1,5 +1,6 @@
 use super::schema::transaction;
 use super::*;
+use serde::Deserialize;
 
 #[derive(Queryable, Debug, PartialEq)]
 pub struct Transaction {
@@ -18,32 +19,29 @@ pub struct Transaction {
 #[table_name = "transaction"]
 pub struct NewTransaction<'a> {
     pub kind: bool,
-    pub source: Option<&'a str>,
-    pub note: Option<&'a str>,
+    pub title: Option<&'a str>,
     pub value: &'a str,
     pub currency: Option<CurrencyType>,
     pub time: NaiveDate,
     pub user_id: &'a str,
-    pub bank_account: Option<i32>,
+    pub bank_account: i32,
 }
 
 impl<'a> NewTransaction<'a> {
     fn new(
         kind: bool,
-        source: Option<&'a str>,
-        note: Option<&'a str>,
+        title: Option<&'a str>,
         value: &'a str,
         currency: Option<CurrencyType>,
         time: (i32, u32, u32),
         user_id: &'a str,
-        bank_account: Option<i32>,
+        bank_account: i32,
     ) -> NewTransaction<'a> {
         let time = chrono::NaiveDate::from_ymd(time.0, time.1, time.2);
 
         NewTransaction {
             kind,
-            source,
-            note,
+            title,
             value,
             currency,
             time,
@@ -57,18 +55,17 @@ impl<'a> Default for NewTransaction<'a> {
     fn default() -> NewTransaction<'a> {
         NewTransaction {
             kind: true,
-            source: Some("Huh"),
-            note: Some("aksdj kaskjd"),
+            title: Some("Huh"),
             value: "344134000",
             currency: Some(CurrencyType::USD),
             time: chrono::NaiveDate::from_ymd(2000, 1, 1),
             user_id: "BerserkerMother",
-            bank_account: None,
+            bank_account: 1,
         }
     }
 }
 
-#[derive(Debug, AsExpression, FromSqlRow, PartialEq)]
+#[derive(Debug, AsExpression, FromSqlRow, PartialEq, Deserialize)]
 #[diesel(sql_type = crate::schema::sql_types::CurrencyType)]
 /// Enum representing currency_type for postgres database
 pub enum CurrencyType {

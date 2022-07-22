@@ -6,8 +6,11 @@ pub struct User {
     pub name: String,
     pub username: String,
     pub password: String,
+    pub api_token: String,
+    pub role: bool,
 }
 
+// TODO: Update NewUser to match User!!!
 impl User {
     /// constructor for User
     fn new(username: &str, password: &str, name: &str) -> User {
@@ -15,6 +18,8 @@ impl User {
             username: String::from(username),
             password: String::from(password),
             name: String::from(name),
+            api_token: String::from("f"),
+            role: false,
         }
     }
 
@@ -102,7 +107,7 @@ impl NewUser {
     }
 }
 
-use super::super::api::models::UserData;
+use super::super::api::user::UserData;
 impl From<UserData> for NewUser {
     fn from(user: UserData) -> NewUser {
         let UserData {

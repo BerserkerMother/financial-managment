@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 
 pub use account::Account;
-pub use transaction::Transaction;
+pub use transaction::{CurrencyType, Transaction};
 pub use user::{NewUser, User};
 
 pub mod result_variant {
