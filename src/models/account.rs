@@ -15,7 +15,7 @@ impl Account {
         Account {
             balance: String::from(balance),
             user_id: String::from(user_id),
-            id: id,
+            id,
             name: String::from(name),
         }
     }
@@ -27,18 +27,18 @@ impl Account {
 
     /// gets a bank account from acount table
     ///
-    /// returns Some(Account) if it exists
+    /// if there exist a bank acount with given info it returns DatabaseResult::Successful(Account)
     ///
-    /// returns None if there is no such data
-    pub fn get(conn: &mut PgConnection, name: &str, user_id: &str) -> Option<Account> {
+    /// other whise it returns DatabaseResult::NotFound
+    pub fn get(conn: &mut PgConnection, name: &str, user_id: &str) -> DatabaseResult<Account> {
         use super::schema::account::{name as n, user_id as ui};
         match account::table
             .filter(ui.eq(user_id))
             .filter(n.eq(name))
             .load::<Account>(conn)
         {
-            Ok(acc_vec) if acc_vec.is_empty() => None,
-            Ok(mut acc_vec) => acc_vec.pop(),
+            Ok(acc_vec) if acc_vec.is_empty() => DatabaseResult::NotFound,
+            Ok(mut acc_vec) => DatabaseResult::Succeful(acc_vec.pop().unwrap()),
             Err(e) => panic!(
                 "Something went wrong while getting data!, Error message: {}",
                 e
@@ -48,16 +48,16 @@ impl Account {
 
     /// adds bank account to account table
     ///
-    /// returns Some(Account) if acount doesn't exists
+    /// returns DatabaseResult::Successful(Account) if acount doesn't exists
     ///
-    /// returns None if Account already exist
-    pub fn add(conn: &mut PgConnection, new_account: &NewAccount) -> Option<Account> {
+    /// returns DatabaseResult::AlreadyExists if Account already exist
+    pub fn add(conn: &mut PgConnection, new_account: &NewAccount) -> DatabaseResult<Account> {
         match diesel::insert_into(account::table)
             .values(new_account)
             .get_result::<Account>(conn)
         {
-            Ok(acc) => Some(acc),
-            Err(Error::DatabaseError(_, _)) => None,
+            Ok(acc) => DatabaseResult::Succeful(acc),
+            Err(Error::DatabaseError(_, _)) => DatabaseResult::AlreadyExists,
             Err(err) => panic!(
                 "Something went wrong while inserting data, Error message: {}",
                 err
@@ -66,14 +66,14 @@ impl Account {
     }
 
     /// delete a bank account from account
-    /// return Some(Account) if account is successfully deleted
+    /// return DatabaseResult::Successful(Account) if account is successfully deleted
     ///
-    /// returns None if there is no such account by id
-    pub fn delete_by_id(conn: &mut PgConnection, id: i32) -> Option<Account> {
+    /// returns DatabaseResult::NotFound if there is no such account by id
+    pub fn delete_by_id(conn: &mut PgConnection, id: i32) -> DatabaseResult<Account> {
         use super::schema::account::id as i;
         match diesel::delete(account::table.filter(i.eq(id))).get_result::<Account>(conn) {
-            Ok(new_acc) => Some(new_acc),
-            Err(Error::NotFound) => None,
+            Ok(new_acc) => DatabaseResult::Succeful(new_acc),
+            Err(Error::NotFound) => DatabaseResult::NotFound,
             Err(err) => panic!(
                 "Something went wrong while deleting data, Error message: {}",
                 err
@@ -85,20 +85,20 @@ impl Account {
     ///
     /// returns Some(Account) if the account exists and
     /// it's successfully deleted. If the account doesn't
-    /// exists function returns None
+    /// exists functi: Summaron returns None
     pub fn delete_by_name_user(
         conn: &mut PgConnection,
         name: &str,
         user_id: &str,
-    ) -> Option<Account> {
+    ) -> DatabaseResult<Account> {
         use super::schema::account::{name as n, user_id as ui};
         match diesel::delete(account::table)
             .filter(ui.eq(user_id))
             .filter(n.eq(name))
             .get_result::<Account>(conn)
         {
-            Ok(acc) => Some(acc),
-            Err(Error::NotFound) => None,
+            Ok(acc) => DatabaseResult::Succeful(acc),
+            Err(Error::NotFound) => DatabaseResult::NotFound,
             Err(err) => panic!(
                 "Some went wrong while deleteing the data, Error message {}",
                 err
@@ -106,13 +106,15 @@ impl Account {
         }
     }
 }
+use result_variant::DatabaseAletr;
+impl DatabaseAletr for Account {}
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = account)]
 pub struct NewAccount<'a> {
-    pub balance: &'a str,
-    pub user_id: &'a str,
-    pub name: &'a str,
+    balance: &'a str,
+    user_id: &'a str,
+    name: &'a str,
 }
 
 impl<'a> NewAccount<'a> {
@@ -170,10 +172,7 @@ mod test {
         let NewAccount { user_id, name, .. } = new_account;
         Account::add(&mut conn, &new_account);
 
-        match Account::delete_by_name_user(&mut conn, name, user_id) {
-            Some(_) => {}
-            None => panic!("Test failed, no data was deleted!"),
-        }
+        Account::delete_by_name_user(&mut conn, name, user_id).unwrap();
     }
 
     #[test]

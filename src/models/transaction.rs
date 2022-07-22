@@ -15,7 +15,7 @@ pub struct Transaction {
 }
 
 #[derive(Debug, Insertable)]
-#[diesel(table_name = transaction)]
+#[table_name = "transaction"]
 pub struct NewTransaction<'a> {
     pub kind: bool,
     pub source: Option<&'a str>,
@@ -61,7 +61,7 @@ impl<'a> Default for NewTransaction<'a> {
             note: Some("aksdj kaskjd"),
             value: "344134000",
             currency: Some(CurrencyType::USD),
-            time: chrono::NaiveDate::from_ymd(2000, 01, 01),
+            time: chrono::NaiveDate::from_ymd(2000, 1, 1),
             user_id: "BerserkerMother",
             bank_account: None,
         }
@@ -101,3 +101,4 @@ impl FromSql<crate::schema::sql_types::CurrencyType, Pg> for CurrencyType {
         }
     }
 }
+// make sure a test user with username "BerserkerMother" exist in database

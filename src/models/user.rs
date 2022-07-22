@@ -1,7 +1,7 @@
 use super::schema::users;
 use super::*;
 
-#[derive(Queryable, Debug, PartialEq)]
+#[derive(Queryable, Debug, PartialEq, Serialize)]
 pub struct User {
     pub name: String,
     pub username: String,
@@ -19,23 +19,23 @@ impl User {
     }
 
     /// creates a NewUser
-    pub fn new_user<'a>(username: &'a str, password: &'a str, name: &'a str) -> NewUser<'a> {
+    pub fn new_user(username: String, password: String, name: String) -> NewUser {
         NewUser::new(name, username, password)
     }
 
     /// gets a user from database with id
-    /// returns Option<User> if user exits
+    /// if the there exist a user with given id returns DatabaseResult::Successful(User)
     ///
-    /// returns None if there is no such user
-    pub fn get(conn: &mut PgConnection, username: &str) -> Option<User> {
+    /// Otherwise returns DatabaseResult::NotFound
+    pub fn get(conn: &mut PgConnection, username: &str) -> DatabaseResult<User> {
         use super::schema::users::username as u;
         let user_vec = users::table.filter(u.eq(username)).load::<User>(conn);
         match user_vec {
             Ok(mut user_vec) => {
                 if user_vec.is_empty() {
-                    None
+                    DatabaseResult::NotFound
                 } else {
-                    user_vec.pop()
+                    DatabaseResult::Succeful(user_vec.pop().unwrap())
                 }
             }
             Err(err) => panic!(
@@ -47,17 +47,17 @@ impl User {
 
     /// inserts a new user to users table
     ///
-    /// if the user already exits returns None
-    /// otherwise Some(User)
+    /// if the user already exits returns DatabaseResult::AlreadyExists
+    /// otherwise DatabaseResults::Successful(User)
     /// # panics
     /// Panics due to unknown error!
-    pub fn add(conn: &mut PgConnection, new_user: &NewUser) -> Option<User> {
+    pub fn add(conn: &mut PgConnection, new_user: &NewUser) -> DatabaseResult<User> {
         match diesel::insert_into(users::table)
             .values(new_user)
             .get_result::<User>(conn)
         {
-            Ok(inserted_user) => Some(inserted_user),
-            Err(Error::DatabaseError(_, _)) => None,
+            Ok(inserted_user) => DatabaseResult::Succeful(inserted_user),
+            Err(Error::DatabaseError(_, _)) => DatabaseResult::AlreadyExists,
             Err(err) => panic!(
                 "Something went wrong while inserting data, Error message: {}",
                 err
@@ -66,13 +66,13 @@ impl User {
     }
 
     /// deletes a user by its username and returns it
-    /// if user doesn't exits it returns None
-    pub fn delete_by_username(conn: &mut PgConnection, username: &str) -> Option<User> {
+    /// if user doesn't exits it returns DatabaseResult::NotFound
+    pub fn delete_by_username(conn: &mut PgConnection, username: &str) -> DatabaseResult<User> {
         use super::schema::users::username as u;
 
         match diesel::delete(users::table.filter(u.eq(username))).get_result::<User>(conn) {
-            Ok(new_user) => Some(new_user),
-            Err(Error::NotFound) => None,
+            Ok(new_user) => DatabaseResult::Succeful(new_user),
+            Err(Error::NotFound) => DatabaseResult::NotFound,
             Err(err) => panic!(
                 "Something went wrong while deleting data, Error message: {}",
                 err
@@ -81,16 +81,19 @@ impl User {
     }
 }
 
+use result_variant::DatabaseAletr;
+impl DatabaseAletr for User {}
+
 #[derive(Debug, Insertable)]
 #[diesel(table_name = users)]
-pub struct NewUser<'a> {
-    pub name: &'a str,
-    pub username: &'a str,
-    pub password: &'a str,
+pub struct NewUser {
+    name: String,
+    username: String,
+    password: String,
 }
 
-impl<'a> NewUser<'a> {
-    pub fn new(name: &'a str, username: &'a str, password: &'a str) -> NewUser<'a> {
+impl NewUser {
+    pub fn new(name: String, username: String, password: String) -> NewUser {
         NewUser {
             name,
             username,
@@ -99,12 +102,24 @@ impl<'a> NewUser<'a> {
     }
 }
 
-impl<'a> Default for NewUser<'a> {
-    fn default() -> NewUser<'a> {
+use super::super::api::models::UserData;
+impl From<UserData> for NewUser {
+    fn from(user: UserData) -> NewUser {
+        let UserData {
+            name,
+            username,
+            password,
+        } = user;
+        User::new_user(username, password, name)
+    }
+}
+
+impl<'a> Default for NewUser {
+    fn default() -> NewUser {
         NewUser {
-            name: "Kimia",
-            username: "absolute_trash",
-            password: "huh",
+            name: String::from("Kimia"),
+            username: String::from("absolute_trash"),
+            password: String::from("huh"),
         }
     }
 }
@@ -122,10 +137,10 @@ mod test {
             username,
             password,
             name,
-        } = new_user;
+        } = &new_user;
 
         // makes sure the user doesn't exits
-        User::delete_by_username(&mut conn, username);
+        User::delete_by_username(&mut conn, &username);
 
         let query_result = User::add(&mut conn, &new_user).unwrap();
 
@@ -134,7 +149,7 @@ mod test {
         assert_eq!(query_result, should_match);
 
         // cleans up inserted row
-        User::delete_by_username(&mut conn, username);
+        User::delete_by_username(&mut conn, &username);
     }
 
     #[test]
@@ -142,14 +157,12 @@ mod test {
         let mut conn = establish_connection();
 
         let new_user = NewUser::default();
-        let username = new_user.username;
+        let username = &new_user.username;
 
         // adds the user before the deleting
         User::add(&mut conn, &new_user);
 
-        if let None = User::delete_by_username(&mut conn, username) {
-            panic!("Error while deleting user, User doesn't exits!!!")
-        }
+        User::delete_by_username(&mut conn, username);
     }
 
     #[test]
@@ -161,11 +174,11 @@ mod test {
             username,
             password,
             name,
-        } = new_user;
+        } = &new_user;
 
-        User::delete_by_username(&mut conn, new_user.username);
+        User::delete_by_username(&mut conn, &new_user.username);
         User::add(&mut conn, &new_user);
-        let query_result = User::get(&mut conn, new_user.username).unwrap();
+        let query_result = User::get(&mut conn, &new_user.username).unwrap();
 
         let should_match = User::new(username, password, name);
 
