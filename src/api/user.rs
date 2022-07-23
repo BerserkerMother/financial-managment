@@ -34,7 +34,14 @@ pub fn super_delete_user(username: &str, user: gaurd::AdminGaurd) {}
 
 /// POST to creating a new user
 #[post("/users", format = "application/json", data = "<new_user>")]
-pub fn create_user(new_user: Json<UserData>) {}
+pub fn create_user(new_user: Json<UserData>) -> Option<Json<User>> {
+    let mut conn = establish_connection();
+    let new_user = new_user.0;
+    match User::add(&mut conn, &new_user.into()) {
+        DatabaseResult::Succeful(user) => Some(Json(user)),
+        _ => None,
+    }
+}
 
 /// GET to retrieve a user
 #[get("/users/<username>")]

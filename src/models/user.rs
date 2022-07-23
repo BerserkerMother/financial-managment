@@ -95,14 +95,18 @@ pub struct NewUser {
     name: String,
     username: String,
     password: String,
+    api_token: String,
 }
 
 impl NewUser {
     pub fn new(name: String, username: String, password: String) -> NewUser {
+        use crate::authentication::random_token;
+        let api_token = random_token();
         NewUser {
             name,
             username,
             password,
+            api_token,
         }
     }
 }
@@ -110,12 +114,13 @@ impl NewUser {
 use super::super::api::user::UserData;
 impl From<UserData> for NewUser {
     fn from(user: UserData) -> NewUser {
+        use crate::authentication::hasher::Hash;
         let UserData {
             name,
             username,
             password,
         } = user;
-        User::new_user(username, password, name)
+        User::new_user(username, password.hash(), name)
     }
 }
 
@@ -125,6 +130,7 @@ impl<'a> Default for NewUser {
             name: String::from("Kimia"),
             username: String::from("absolute_trash"),
             password: String::from("huh"),
+            api_token: "0".to_string(),
         }
     }
 }
@@ -142,6 +148,7 @@ mod test {
             username,
             password,
             name,
+            api_token,
         } = &new_user;
 
         // makes sure the user doesn't exits
@@ -179,6 +186,7 @@ mod test {
             username,
             password,
             name,
+            api_token,
         } = &new_user;
 
         User::delete_by_username(&mut conn, &new_user.username);
