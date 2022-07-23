@@ -1,3 +1,7 @@
+pub mod hasher;
+pub mod token_generator;
+pub use token_generator::random_token;
+
 use rocket::http::{Cookie, CookieJar};
 use rocket::outcome::{IntoOutcome, Outcome};
 use rocket::request::{self, FromRequest, Request};
