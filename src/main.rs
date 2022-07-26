@@ -7,4 +7,5 @@ fn rocket() -> _ {
     rocket::build()
         .mount("/", routes::stage())
         .mount("/api", api::stage())
+        .manage(get_conn_pool())
 }
