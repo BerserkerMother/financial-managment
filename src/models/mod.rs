@@ -20,18 +20,13 @@ pub use user::{NewUser, User};
 
 pub mod result_variant {
     /// Enum to represent state of database calls
-    pub enum DatabaseResult<T>
-    where
-        T: DatabaseAletr,
-    {
+    pub enum DatabaseResult<T> {
         Succeful(T),
         AlreadyExists,
         NotFound,
     }
 
-    pub trait DatabaseAletr {}
-
-    impl<T: DatabaseAletr> DatabaseResult<T> {
+    impl<T> DatabaseResult<T> {
         pub fn unwrap(self) -> T {
             match self {
                 DatabaseResult::Succeful(item) => item,
