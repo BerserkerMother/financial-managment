@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Queryable, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transaction {
     pub kind: bool,
-    pub title: Option<String>,
+    pub title: String,
     pub value: String,
     pub currency: CurrencyType,
     pub time: NaiveDate,
@@ -19,7 +19,7 @@ pub struct Transaction {
 impl Transaction {
     fn new(
         kind: bool,
-        title: Option<String>,
+        title: String,
         value: String,
         currency: CurrencyType,
         time: NaiveDate,
@@ -46,16 +46,15 @@ impl Transaction {
             .get_result::<Transaction>(conn)
         {
             Ok(trans) => DatabaseResult::Succeful(trans),
-            Err(Error::DatabaseError(_, _)) => DatabaseResult::AlreadyExists,
             Err(err) => panic!("Something went wrong, Error message: {}", err),
         }
     }
 
-    /// gets user all transations
-    pub fn all(conn: &mut PgConnection, user_id: &str) -> DatabaseResult<Vec<Transaction>> {
-        use super::schema::transaction::user_id as ui;
+    /// gets a user account all transations
+    pub fn all(conn: &mut PgConnection, account_id: i32) -> DatabaseResult<Vec<Transaction>> {
+        use super::schema::transaction::bank_account as ba;
         match transaction::table
-            .filter(ui.eq(user_id))
+            .filter(ba.eq(account_id))
             .load::<Transaction>(conn)
         {
             Ok(trans_vec) => DatabaseResult::Succeful(trans_vec),
@@ -89,7 +88,7 @@ impl Transaction {
     }
 
     /// deletes a user account all transaction
-    pub fn delete_account(
+    pub fn delete_all(
         conn: &mut PgConnection,
         account_id: i32,
     ) -> DatabaseResult<Vec<Transaction>> {
@@ -107,7 +106,7 @@ impl Transaction {
 #[table_name = "transaction"]
 pub struct NewTransaction {
     pub kind: bool,
-    pub title: Option<String>,
+    pub title: String,
     pub value: String,
     pub currency: CurrencyType,
     pub time: NaiveDate,
@@ -115,10 +114,25 @@ pub struct NewTransaction {
     pub bank_account: i32,
 }
 
+use crate::api::transaction::TransactionData;
+impl From<TransactionData> for NewTransaction {
+    fn from(data: TransactionData) -> NewTransaction {
+        let TransactionData {
+            kind,
+            title,
+            value,
+            currency,
+            user_id,
+            bank_account,
+        } = data;
+        NewTransaction::new(kind, title, value, currency, user_id, bank_account)
+    }
+}
+
 impl<'a> NewTransaction {
     fn new(
         kind: bool,
-        title: Option<String>,
+        title: String,
         value: String,
         currency: CurrencyType,
         user_id: String,
@@ -142,7 +156,7 @@ impl Default for NewTransaction {
     fn default() -> NewTransaction {
         NewTransaction {
             kind: true,
-            title: Some("Huh".to_string()),
+            title: "Huh".to_string(),
             value: "344134000".to_string(),
             currency: CurrencyType::USD,
             time: Local::today().naive_local(),

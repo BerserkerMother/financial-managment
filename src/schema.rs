@@ -12,7 +12,7 @@ table! {
     use diesel::sql_types::*;
     transaction (id) {
         kind -> Bool,
-        title -> Nullable<Text>,
+        title -> Text,
         value -> Text,
         currency -> CurrencyType,
         time -> Date,
