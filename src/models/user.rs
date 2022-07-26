@@ -51,6 +51,16 @@ impl User {
             ),
         }
     }
+
+    /// gets all users
+    pub fn all(conn: &mut PgConnection) -> DatabaseResult<Vec<User>> {
+        let user_vec = users::table.load::<User>(conn);
+        match user_vec {
+            Ok(user_vec) => DatabaseResult::Succeful(user_vec),
+            Err(err) => panic!("Something is Wrong: Error message: {}", err),
+        }
+    }
+
     /// gets a user by its bearer token
     pub fn get_by_token(conn: &mut PgConnection, token: &str) -> DatabaseResult<User> {
         use super::schema::users::api_token as ap;
@@ -118,9 +128,6 @@ impl User {
         }
     }
 }
-
-use result_variant::DatabaseAletr;
-impl DatabaseAletr for User {}
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = users)]
