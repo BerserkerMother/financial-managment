@@ -1,7 +1,9 @@
 use super::schema::users;
 use super::*;
 
-#[derive(Queryable, Debug, PartialEq, Serialize)]
+#[derive(Queryable, Debug, PartialEq, Serialize, Deserialize, AsChangeset)]
+#[diesel(table_name = users)]
+#[primary_key(username)]
 pub struct User {
     pub name: String,
     pub username: String,
@@ -35,6 +37,24 @@ impl User {
     pub fn get(conn: &mut PgConnection, username: &str) -> DatabaseResult<User> {
         use super::schema::users::username as u;
         let user_vec = users::table.filter(u.eq(username)).load::<User>(conn);
+        match user_vec {
+            Ok(mut user_vec) => {
+                if user_vec.is_empty() {
+                    DatabaseResult::NotFound
+                } else {
+                    DatabaseResult::Succeful(user_vec.pop().unwrap())
+                }
+            }
+            Err(err) => panic!(
+                "Something went wrong while getting data, Error message: {}",
+                err
+            ),
+        }
+    }
+    /// gets a user by its bearer token
+    pub fn get_by_token(conn: &mut PgConnection, token: &str) -> DatabaseResult<User> {
+        use super::schema::users::api_token as ap;
+        let user_vec = users::table.filter(ap.eq(token)).load::<User>(conn);
         match user_vec {
             Ok(mut user_vec) => {
                 if user_vec.is_empty() {
@@ -84,6 +104,19 @@ impl User {
             ),
         }
     }
+
+    /// update a user account
+    pub fn update(conn: &mut PgConnection, user: &User) -> DatabaseResult<User> {
+        use super::schema::users::username as un;
+        match diesel::update(users::table.filter(un.eq(&user.username)))
+            .set(user)
+            .get_result::<User>(conn)
+        {
+            Ok(user) => DatabaseResult::Succeful(user),
+            Err(Error::DatabaseError(_, _)) => DatabaseResult::NotFound,
+            _ => panic!("Something went wrong"),
+        }
+    }
 }
 
 use result_variant::DatabaseAletr;
@@ -130,7 +163,7 @@ impl<'a> Default for NewUser {
             name: String::from("Kimia"),
             username: String::from("absolute_trash"),
             password: String::from("huh"),
-            api_token: "0".to_string(),
+            api_token: "f".to_string(),
         }
     }
 }
@@ -148,7 +181,7 @@ mod test {
             username,
             password,
             name,
-            api_token,
+            ..
         } = &new_user;
 
         // makes sure the user doesn't exits
@@ -186,7 +219,7 @@ mod test {
             username,
             password,
             name,
-            api_token,
+            ..
         } = &new_user;
 
         User::delete_by_username(&mut conn, &new_user.username);
@@ -198,5 +231,25 @@ mod test {
         assert_eq!(should_match, query_result);
         // cleans up the added user
         User::delete_by_username(&mut conn, &new_user.username);
+    }
+    #[test]
+    fn user_update() {
+        let mut conn = establish_connection();
+
+        let new_user = NewUser::default();
+        User::delete_by_username(&mut conn, &new_user.username);
+        if let DatabaseResult::Succeful(mut user) = User::add(&mut conn, &new_user) {
+            user.name = String::from("Changed");
+            println!("{:?}", user);
+            let updated = match User::update(&mut conn, &user) {
+                DatabaseResult::Succeful(user) => user,
+                _ => panic!("WTF"),
+            };
+        }
+        let query_result = User::get(&mut conn, &new_user.username).unwrap().name;
+
+        let should_match = String::from("Changed");
+
+        assert_eq!(should_match, query_result);
     }
 }
