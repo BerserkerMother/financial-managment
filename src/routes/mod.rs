@@ -26,6 +26,7 @@ pub fn login(credential: Json<Credential>, mut conn: DbConn) -> Option<Json<User
         _ => return None,
     };
     if credential.password.hash().eq(&user.password) {
+        let user = User::refresh_bearer(&mut conn, &credential.username).unwrap();
         Some(Json(user))
     } else {
         None

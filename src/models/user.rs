@@ -80,6 +80,21 @@ impl User {
         }
     }
 
+    /// refreshes Bearer token
+    pub fn refresh_bearer(conn: &mut PgConnection, username: &str) -> DatabaseResult<User> {
+        use super::schema::users::{api_token as at, username as un};
+        use crate::authentication::random_token;
+        let new_token = random_token();
+        match diesel::update(users::table.filter(un.eq(username)))
+            .set(at.eq(new_token))
+            .get_result::<User>(conn)
+        {
+            Ok(user) => DatabaseResult::Succeful(user),
+            Err(Error::DatabaseError(_, _)) => DatabaseResult::NotFound,
+            Err(err) => panic!("Something went terribly wrong, Error message: {}", err),
+        }
+    }
+
     /// inserts a new user to users table
     ///
     /// if the user already exits returns DatabaseResult::AlreadyExists
