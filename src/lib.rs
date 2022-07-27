@@ -1,8 +1,11 @@
 pub mod api;
 pub mod authentication;
+pub mod db;
 pub mod models;
 pub mod routes;
 mod schema;
+
+pub use db::{get_conn_pool, DbConn};
 
 #[macro_use]
 extern crate rocket;
