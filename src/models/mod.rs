@@ -14,8 +14,8 @@ use diesel::serialize::{self, IsNull, Output, ToSql};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
-pub use account::Account;
-pub use transaction::{CurrencyType, Transaction};
+pub use account::{Account, NewAccount};
+pub use transaction::{CurrencyType, NewTransaction, Transaction};
 pub use user::{NewUser, User};
 
 pub mod result_variant {

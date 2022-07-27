@@ -1,7 +1,9 @@
 use super::schema::account;
 use super::*;
+use serde::Serialize;
 
-#[derive(Queryable, Debug, PartialEq)]
+#[derive(Queryable, Debug, PartialEq, Serialize, AsChangeset, Deserialize)]
+#[diesel(table_name = account)]
 pub struct Account {
     pub balance: String,
     pub user_id: String,
@@ -21,7 +23,7 @@ impl Account {
     }
 
     /// creates a NewAcount
-    pub fn new_account<'a>(name: &'a str, user_id: &'a str) -> NewAccount<'a> {
+    pub fn new_account(name: String, user_id: String) -> NewAccount {
         NewAccount::new(user_id, name)
     }
 
@@ -30,19 +32,23 @@ impl Account {
     /// if there exist a bank acount with given info it returns DatabaseResult::Successful(Account)
     ///
     /// other whise it returns DatabaseResult::NotFound
-    pub fn get(conn: &mut PgConnection, name: &str, user_id: &str) -> DatabaseResult<Account> {
-        use super::schema::account::{name as n, user_id as ui};
-        match account::table
-            .filter(ui.eq(user_id))
-            .filter(n.eq(name))
-            .load::<Account>(conn)
-        {
+    pub fn get(conn: &mut PgConnection, id: i32) -> DatabaseResult<Account> {
+        use super::schema::account::id as i;
+        match account::table.filter(i.eq(id)).load::<Account>(conn) {
             Ok(acc_vec) if acc_vec.is_empty() => DatabaseResult::NotFound,
             Ok(mut acc_vec) => DatabaseResult::Succeful(acc_vec.pop().unwrap()),
             Err(e) => panic!(
                 "Something went wrong while getting data!, Error message: {}",
                 e
             ),
+        }
+    }
+    /// gets all user accounts
+    pub fn all(conn: &mut PgConnection, user_id: String) -> DatabaseResult<Vec<Account>> {
+        use super::schema::account::user_id as ui;
+        match account::table.filter(ui.eq(user_id)).load::<Account>(conn) {
+            Ok(acc_vec) => DatabaseResult::Succeful(acc_vec),
+            Err(e) => panic!("panics for unknown reason, Error message: {}", e),
         }
     }
 
@@ -62,6 +68,23 @@ impl Account {
                 "Something went wrong while inserting data, Error message: {}",
                 err
             ),
+        }
+    }
+
+    /// updates an account
+    pub fn update(
+        conn: &mut PgConnection,
+        id: i32,
+        new_update: &Account,
+    ) -> DatabaseResult<Account> {
+        use super::schema::account::id as i;
+        match diesel::update(account::table.filter(i.eq(id)))
+            .set(new_update)
+            .get_result::<Account>(conn)
+        {
+            Ok(acc) => DatabaseResult::Succeful(acc),
+            Err(Error::DatabaseError(_, _)) => DatabaseResult::NotFound,
+            Err(err) => panic!("something went terribly  wrong, Error message: {}", err),
         }
     }
 
@@ -106,33 +129,39 @@ impl Account {
         }
     }
 }
-use result_variant::DatabaseAletr;
-impl DatabaseAletr for Account {}
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = account)]
-pub struct NewAccount<'a> {
-    balance: &'a str,
-    user_id: &'a str,
-    name: &'a str,
+pub struct NewAccount {
+    balance: String,
+    user_id: String,
+    name: String,
 }
 
-impl<'a> NewAccount<'a> {
-    fn new(user_id: &'a str, name: &'a str) -> NewAccount<'a> {
+impl<'a> NewAccount {
+    fn new(user_id: String, name: String) -> NewAccount {
         NewAccount {
-            balance: "0",
+            balance: "0".to_string(),
             user_id,
             name,
         }
     }
 }
 
-impl<'a> Default for NewAccount<'a> {
-    fn default() -> NewAccount<'a> {
+use crate::api::account::AccountData;
+impl From<AccountData> for NewAccount {
+    fn from(data: AccountData) -> NewAccount {
+        let AccountData { name, user_id } = data;
+        NewAccount::new(user_id, name)
+    }
+}
+
+impl Default for NewAccount {
+    fn default() -> NewAccount {
         NewAccount {
-            balance: "0",
-            user_id: "BerserkerMother",
-            name: "American Express",
+            balance: "0".to_string(),
+            user_id: "BerserkerMother".to_string(),
+            name: "American Express".to_string(),
         }
     }
 }
@@ -152,7 +181,7 @@ mod test {
             balance,
             user_id,
             name,
-        } = new_account;
+        } = &new_account;
 
         let query_result = Account::add(&mut conn, &new_account).unwrap();
 
@@ -169,7 +198,7 @@ mod test {
         let mut conn = establish_connection();
 
         let new_account = NewAccount::default();
-        let NewAccount { user_id, name, .. } = new_account;
+        let NewAccount { user_id, name, .. } = &new_account;
         Account::add(&mut conn, &new_account);
 
         Account::delete_by_name_user(&mut conn, name, user_id).unwrap();
@@ -184,11 +213,11 @@ mod test {
             name,
             balance,
             user_id,
-        } = new_account;
+        } = &new_account;
 
-        Account::add(&mut conn, &new_account);
+        let query_result = Account::add(&mut conn, &new_account).unwrap();
 
-        let query_result = Account::get(&mut conn, name, user_id).unwrap();
+        let query_result = Account::get(&mut conn, query_result.id).unwrap();
 
         let should_match = Account::new(balance, user_id, query_result.id, name);
 
